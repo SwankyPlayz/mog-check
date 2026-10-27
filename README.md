@@ -8,32 +8,56 @@ Camera-based face scoring demo. Single-page frontend plus one Netlify Function t
 
 ```
 mog-check/
-├── index.html
+├── public/
+│   └── index.html        <- the only thing served to visitors
+├── netlify/
+│   └── functions/
+│       └── analyze.js    <- never served as a file
 ├── netlify.toml
 ├── package.json
 ├── .env.example
-├── .gitignore
-└── netlify/
-    └── functions/
-        └── analyze.js
+└── .gitignore
 ```
+
+`publish = "public"`, and the functions directory sits **outside** the publish
+directory. That matters: if you publish the repo root and keep the function at
+`netlify/functions/analyze.js`, Netlify ships the function's source as a static
+asset and anyone can read it at `/netlify/functions/analyze.js`.
 
 ## Files
 
-- **`index.html`** — the whole UI, camera handling and request logic in one file.
+- **`public/index.html`** — the whole UI, camera handling and request logic in one file.
 - **`netlify/functions/analyze.js`** — the backend. Holds every secret, enforces the 3–10 photo rule, and returns `{ mogScore, verdict, advice }`.
-- **`netlify.toml`** — publish dir `.`, functions dir `netlify/functions`, esbuild bundler.
+- **`netlify.toml`** — publish dir `public`, functions dir `netlify/functions`, esbuild bundler.
 - **`package.json`** — no dependencies; Node 18+ has `fetch` and `FormData` built in.
 - **`.env.example`** — copy to `.env` locally. Never commit `.env`.
 
-## Deploy in 3 minutes
+## Deploy on Netlify
 
-1. Push this repo to GitHub.
-2. Netlify → **Add new site** → **Import from GitHub** → select this repo → **Deploy**.
-3. Site settings → **Environment variables**, add:
-   - `CLOUDINARY_CLOUD_NAME`
-   - `CLOUDINARY_UPLOAD_PRESET` (must be an **unsigned** preset: Settings → Upload → Add upload preset → Signing Mode: Unsigned)
-4. Trigger a redeploy.
+1. Netlify → team dashboard → **Add new project** → **Import an existing project** → **GitHub**.
+2. If `mog-check` isn't in the list, the Netlify GitHub App has no access to it:
+   choose **Configure Netlify on GitHub** and grant access to this one repository
+   (Settings → Applications → Netlify → Configure → *Only select repositories*).
+3. Build settings: leave the build command empty, publish directory `public`,
+   functions directory `netlify/functions`. `netlify.toml` already sets these.
+4. Deploy, then add the environment variables (see below) and redeploy.
+5. If the project was created private, make it public: **Project configuration →
+   General → Visitor access → Project visibility → Edit visibility → Public**.
+   "Make public" only becomes available after one successful production deploy.
+
+### Environment variables
+
+**Project configuration → Environment variables → Add a variable.** Never put
+these in the repo or in `netlify.toml`.
+
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_UPLOAD_PRESET` — must be an **unsigned** preset (Cloudinary →
+  Settings → Upload → Add upload preset → Signing Mode: Unsigned)
+
+An unsigned preset is a bearer capability: anyone who learns the cloud name and
+preset name can upload to your Cloudinary account directly, without going
+through this function. Since the upload already happens server-side, a signed
+upload (API key + secret + signature) is the safer choice.
 
 ## Scoring
 
